@@ -40,19 +40,23 @@ client.on('messageCreate', async message => {
     if (message.channel.isThread()) {
         const threadId = message.channel.id;
         
-        // ถ้าเป็นข้อความแรกในเธรด ให้บันทึกเจ้าของโพสต์และส่งปุ่มสอบถาม
+        // ถ้าเป็นข้อความแรกในเธรด ให้บันทึกเจ้าของโพสต์และส่ง 2 ปุ่มสอบถาม
         if (!threadOwnerMap.has(threadId)) {
             threadOwnerMap.set(threadId, message.author.id);
 
             const askRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
+                    .setCustomId('ask_job_details_bot2')
+                    .setLabel('📋 ขอรายละเอียดงาน')
+                    .setStyle(ButtonStyle.Primary),
+                new ButtonBuilder()
                     .setCustomId('ask_missing_info_bot2')
-                    .setLabel('❓ ขอรายละเอียดเพิ่มเติม')
+                    .setLabel('❓ ข้อมูลไม่ครบถ้วน')
                     .setStyle(ButtonStyle.Secondary)
             );
 
             await message.reply({
-                content: `💬 **หากข้อมูลงานไม่ครบถ้วน** สามารถกดปุ่มด้านล่างเพื่อขอรายละเอียดเพิ่มเติมจากเจ้าของโพสต์ได้ครับ`,
+                content: `💬 **หากต้องการสอบถามข้อมูลเพิ่มเติมจากเจ้าของโพสต์** สามารถเลือกกดปุ่มด้านล่างได้เลยครับ`,
                 components: [askRow]
             });
         }
@@ -62,41 +66,49 @@ client.on('messageCreate', async message => {
 client.on('interactionCreate', async interaction => {
     if (!interaction.isButton()) return;
 
-    if (interaction.customId === 'ask_missing_info_bot2') {
-        const threadId = interaction.channel.id;
-        const ownerId = threadOwnerMap.get(threadId);
+    const threadId = interaction.channel.id;
+    const ownerId = threadOwnerMap.get(threadId);
 
-        // กรณีเป็นเจ้าของโพสต์กดเอง
-        if (interaction.user.id === ownerId) {
-            return interaction.reply({ 
-                content: '💡 คุณเป็นเจ้าของโพสต์ สามารถพิมพ์รายละเอียดงาน ชื่อลูกค้า หรือชื่อบริษัทเพิ่มเติมลงในเธรดนี้ได้เลยครับ', 
-                ephemeral: true 
-            });
-        }
-
-        // แจ้งเตือนคนกดแบบเห็นคนเดียว (Ephemeral)
-        await interaction.reply({ 
-            content: '✅ ส่งข้อความแจ้งเตือนขอรายละเอียดเพิ่มเติมไปยังเจ้าของโพสต์เรียบร้อยแล้วครับ', 
+    // กรณีเป็นเจ้าของโพสต์กดเอง
+    if (interaction.user.id === ownerId) {
+        return interaction.reply({ 
+            content: '💡 คุณเป็นเจ้าของโพสต์ สามารถพิมพ์รายละเอียดงาน ชื่อลูกค้า หรือข้อมูลเพิ่มเติมลงในเธรดนี้ได้เลยครับ', 
             ephemeral: true 
         });
+    }
 
-        // ส่งข้อความแท็กเรียกเจ้าของโพสต์ในเธรดสาธารณะ
-        if (ownerId) {
-            await interaction.channel.send({
-                content: `📢 <@${ownerId}> มีผู้สอบถามข้อมูลครับ: **รบกวนพิมพ์รายละเอียดงาน, ชื่อลูกค้า และชื่อบริษัทเพิ่มเติมให้หน่อยครับ** (กดโดย <@${interaction.user.id}>)`
-            });
-        } else {
-            await interaction.channel.send({
-                content: `📢 **รบกวนเจ้าของโพสต์พิมพ์รายละเอียดงาน, ชื่อลูกค้า และชื่อบริษัทเพิ่มเติมให้หน่อยครับ** (กดโดย <@${interaction.user.id}>)`
-            });
-        }
+    let requestMessageText = '';
 
-        // ลบข้อความปุ่มกดทิ้งทันทีหลังมีคนกดใช้งาน
-        try {
-            await interaction.message.delete();
-        } catch (error) {
-            console.error('ไม่สามารถลบข้อความปุ่มได้:', error);
-        }
+    if (interaction.customId === 'ask_job_details_bot2') {
+        requestMessageText = '**รบกวนพิมพ์รายละเอียดงานเพิ่มเติมให้หน่อยครับ**';
+    } else if (interaction.customId === 'ask_missing_info_bot2') {
+        requestMessageText = '**ขอรายละเอียดข้อมูลที่ไม่ครบหน่อยครับ**';
+    } else {
+        return;
+    }
+
+    // แจ้งเตือนคนกดแบบเห็นคนเดียว (Ephemeral)
+    await interaction.reply({ 
+        content: '✅ ส่งข้อความแจ้งเตือนไปยังเจ้าของโพสต์เรียบร้อยแล้วครับ', 
+        ephemeral: true 
+    });
+
+    // ส่งข้อความแท็กเรียกเจ้าของโพสต์ในเธรดสาธารณะ (ไม่แสดงชื่อคนกด)
+    if (ownerId) {
+        await interaction.channel.send({
+            content: `📢 <@${ownerId}> มีผู้สอบถามข้อมูลครับ: ${requestMessageText}`
+        });
+    } else {
+        await interaction.channel.send({
+            content: `📢 **เจ้าของโพสต์ครับ**: ${requestMessageText}`
+        });
+    }
+
+    // ลบข้อความปุ่มกดทิ้งทันทีหลังมีคนกดใช้งาน
+    try {
+        await interaction.message.delete();
+    } catch (error) {
+        console.error('ไม่สามารถลบข้อความปุ่มได้:', error);
     }
 });
 
