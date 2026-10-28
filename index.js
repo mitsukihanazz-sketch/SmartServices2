@@ -96,7 +96,7 @@ client.on('interactionCreate', async interaction => {
     // ส่งข้อความแท็กเรียกเจ้าของโพสต์ในเธรดสาธารณะ (ไม่แสดงชื่อคนกด)
     if (ownerId) {
         await interaction.channel.send({
-            content: `📢 <@${ownerId}> มีผู้สอบถามข้อมูลครับ: ${requestMessageText}`
+            content: `📢 <@${ownerId}> ${requestMessageText}`
         });
     } else {
         await interaction.channel.send({
