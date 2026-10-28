@@ -74,7 +74,7 @@ client.on('interactionCreate', async interaction => {
             });
         }
 
-        // แจ้งเตือนคนกดแบบเห็นคนเดียว (Ephemeral) - คนโพสต์จะไม่เห็นข้อความนี้
+        // แจ้งเตือนคนกดแบบเห็นคนเดียว (Ephemeral)
         await interaction.reply({ 
             content: '✅ ส่งข้อความแจ้งเตือนขอรายละเอียดเพิ่มเติมไปยังเจ้าของโพสต์เรียบร้อยแล้วครับ', 
             ephemeral: true 
@@ -89,6 +89,13 @@ client.on('interactionCreate', async interaction => {
             await interaction.channel.send({
                 content: `📢 **รบกวนเจ้าของโพสต์พิมพ์รายละเอียดงาน, ชื่อลูกค้า และชื่อบริษัทเพิ่มเติมให้หน่อยครับ** (กดโดย <@${interaction.user.id}>)`
             });
+        }
+
+        // ลบข้อความปุ่มกดทิ้งทันทีหลังมีคนกดใช้งาน
+        try {
+            await interaction.message.delete();
+        } catch (error) {
+            console.error('ไม่สามารถลบข้อความปุ่มได้:', error);
         }
     }
 });
